@@ -38,10 +38,11 @@ ArrayList<BezierCurve> arcs_to_curves(Point point_start, Point point_end, double
   if (point_start[0] == point_end[0] && point_start[1] == point_end[1]){ 
     return {};
   }
-  if (rx == 0.0f && ry == 0.0f){
-    arcs_list.push(BezierCurve(point_start, point_end, point_start, point_end));
-    return arcs_list;
-  }
+  //if (rx == 0.0f && ry == 0.0f){
+  //  arcs_list.push(BezierCurve(point_start, point_end, point_start, point_end));
+  //  return arcs_list;
+  //}
+  std::cout << "Start convert to bezier\n";
 
   double sin_phi = std::sin(angle_degree);
   double cos_phi = std::cos(angle_degree);
@@ -173,13 +174,14 @@ Path::Path(Attribute *attrs, int attrs_count, BaseShape *parent)
     std::string_view key = attrs[i].key;
     std::string_view value = attrs[i].value;
     if (key == "d") {
-      // std::cout << "Founded path\n";
+      while(value.size() && (isspace(value[0]) || value[0] ==','))
+        value = value.substr(1);
+
       while (!value.empty()) {
         char command = value[0];
         value = value.substr(1);
         switch(command) {
           case 'M': {
-            // std::cout << "INFO: start M\n";
             // read 2 points 
             double x = read_double(&value);
             double y = read_double(&value);
@@ -199,10 +201,8 @@ Path::Path(Attribute *attrs, int attrs_count, BaseShape *parent)
               current_point = {x, y};
               pre_control_point = current_point; 
             }
-            // std::cout << "INFO: done M\n";
           } break;
           case 'm': {
-            // std::cout << "INFO: start m\n";
             double dx = read_double(&value);
             double dy = read_double(&value);
             current_point[0] += dx;
@@ -221,16 +221,12 @@ Path::Path(Attribute *attrs, int attrs_count, BaseShape *parent)
               current_point[1] += dy;
               pre_control_point = current_point; 
             }
-            // std::cout << "INFO: done m\n";
           } break;
           case 'L': {
-              // std::cout << "INFO: start L\n";
-            // read 2 points 
             double x = read_double(&value);
             double y = read_double(&value);
             Point des_point = {x, y};
             this->bezier_list.push(BezierCurve{current_point, des_point, current_point, des_point});
-              //update current
 
             current_point = des_point;
             pre_control_point = current_point; 
@@ -245,12 +241,10 @@ Path::Path(Attribute *attrs, int attrs_count, BaseShape *parent)
 
               current_point = des_point;
               pre_control_point = current_point; 
-              // std::cout << "INFO: done L\n";
             }
           } break;
 
           case 'l': {
-            // std::cout << "INFO: start l\n";
             double dx = read_double(&value);
             double dy = read_double(&value);
             Point des_point = {current_point[0] + dx, current_point[1] + dy};
@@ -269,11 +263,9 @@ Path::Path(Attribute *attrs, int attrs_count, BaseShape *parent)
               current_point = des_point;
               pre_control_point = current_point; 
             }
-            //  std::cout << "INFO: done l\n";
           } break;
 
           case 'H': {
-            // std::cout << "INFO: start H\n";
             double x = read_double(&value);
             Point des_point = {x, current_point[1]};
             this->bezier_list.push(BezierCurve{current_point, des_point, current_point, des_point});
@@ -290,7 +282,6 @@ Path::Path(Attribute *attrs, int attrs_count, BaseShape *parent)
               current_point = des_point;
               pre_control_point = current_point; 
             }
-            // std::cout << "INFO: done H\n";
           } break;
 
           case 'h': {
@@ -327,7 +318,6 @@ Path::Path(Attribute *attrs, int attrs_count, BaseShape *parent)
 
               current_point = des_point;
               pre_control_point = current_point; 
-              // std::cout << "INFO: done V\n";
             }
           } break;
           case 'v': {
@@ -345,7 +335,6 @@ Path::Path(Attribute *attrs, int attrs_count, BaseShape *parent)
 
               current_point = des_point;
               pre_control_point = current_point; 
-              // std::cout << "INFO: done v\n";
             }
           } break;
           case 'C': {
@@ -408,10 +397,8 @@ Path::Path(Attribute *attrs, int attrs_count, BaseShape *parent)
               current_point = point_n;
               pre_control_point = point_ce;
             }
-            // std::cout << "INFO: done c\n";
           } break;
           case 'S': {
-            // std::cout << "INFO: start S\n";
             double x[2];
             double y[2];
             for (int i = 0; i < 2; ++i) {
@@ -442,10 +429,8 @@ Path::Path(Attribute *attrs, int attrs_count, BaseShape *parent)
               current_point = point_n;
               pre_control_point = point_ce;
             }
-            // std::cout << "INFO: done S\n";
           } break;
           case 's': {
-            // std::cout << "INFO: start s\n";
             double x[2];
             double y[2];
             for (int i = 0; i < 2; ++i) {
@@ -476,10 +461,8 @@ Path::Path(Attribute *attrs, int attrs_count, BaseShape *parent)
               current_point = point_n;
               pre_control_point = point_ce;
             }
-            // std::cout << "INFO: done s\n";
           } break;
           case 'Q': {
-            // std::cout << "INFO: start Q\n";
       
             double x[2];
             double y[2];
@@ -509,11 +492,9 @@ Path::Path(Attribute *attrs, int attrs_count, BaseShape *parent)
               current_point = point_n;
               pre_control_point = point_c;
             }
-            // std::cout << "INFO: done Q\n";
           } break;
 
           case 'q': { //d_point_n, d_point_c (from current point)
-            // std::cout << "INFO: start q\n";
             double x[2];
             double y[2];
             for (int i = 0; i < 2; ++i) {
@@ -541,10 +522,8 @@ Path::Path(Attribute *attrs, int attrs_count, BaseShape *parent)
               current_point = point_n;
               pre_control_point = point_c;
             }
-            // std::cout << "INFO: done q\n";
           } break;
           case 'T': {//quadratic abnormal, Input the end of previous bezier curve 
-            // std::cout << "INFO: start T\n";
             double x = read_double(&value);
             double y = read_double(&value);
             Point point_n = {x, y};
@@ -567,10 +546,8 @@ Path::Path(Attribute *attrs, int attrs_count, BaseShape *parent)
               current_point = {x, y};
               pre_control_point = point_c;
             }
-            // std::cout << "INFO: done T\n";
           } break;
           case 't': {
-            // std::cout << "INFO: start t\n";
             double x = read_double(&value);
             double y = read_double(&value);
             Point point_n = {current_point[0] + x, current_point[0] + y};
@@ -595,7 +572,6 @@ Path::Path(Attribute *attrs, int attrs_count, BaseShape *parent)
               current_point[1] += y;
               pre_control_point = point_c;
             }
-            // std::cout << "INFO: done t\n";
           } break;
           case 'A': {
             double rx, ry;
@@ -687,7 +663,6 @@ Path::Path(Attribute *attrs, int attrs_count, BaseShape *parent)
             while (!value.empty() && (isspace(value[0]) || value[0] == ',')) {
               value = value.substr(1);
             }
-            // std::cout << "INFO: done Z\n";
           } break;
           default: {
             __builtin_unreachable();
@@ -746,7 +721,10 @@ void Path::render(Gdiplus::Graphics *graphics) const {
                         (Gdiplus::REAL)curve.point_CE[0], (Gdiplus::REAL)curve.point_CE[1],
                         (Gdiplus::REAL)curve.point_N[0], (Gdiplus::REAL)curve.point_N[1]);
 
-
+    std::cout << "Point start: " << curve.point_0[0] << " | " << curve.point_0[1] << '\n';
+    std::cout << "Point_CS: " << curve.point_CS[0] << " | " << curve.point_CS[1] << '\n';
+    std::cout << "Point_CE: " << curve.point_CE[0] << " | " << curve.point_CE[1] << '\n';
+    std::cout << "Point_N: " << curve.point_N[0] << " | " << curve.point_N[1] << '\n';
 
     last_point = curve.point_N;
   }
@@ -761,8 +739,4 @@ void Path::render(Gdiplus::Graphics *graphics) const {
     Gdiplus::Pen pen = {this->stroke_brush.get(), (float)this->stroke_width};
     graphics->DrawPath(&pen, &path_list);
   } 
-  //else {
-  //  Gdiplus::Pen pen = {Gdiplus::Color(255, 0, 0, 255), (float)this->stroke_width};
-  //  graphics->DrawPath(&pen, &path_list);
-  //}
 }
