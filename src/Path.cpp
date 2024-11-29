@@ -35,14 +35,16 @@ static double get_vector_angle(Point u, Point v){
 
 ArrayList<BezierCurve> arcs_to_curves(Point point_start, Point point_end, double rx, double ry, double angle_degree, int large_arc_flag, int sweep_flag){
   ArrayList<BezierCurve> arcs_list;
+
   if (point_start[0] == point_end[0] && point_start[1] == point_end[1]){ 
     return {};
   }
-  //if (rx == 0.0f && ry == 0.0f){
-  //  arcs_list.push(BezierCurve(point_start, point_end, point_start, point_end));
-  //  return arcs_list;
-  //}
-  std::cout << "Start convert to bezier\n";
+
+  if (rx == 0.0f && ry == 0.0f){
+    arcs_list.push(BezierCurve(point_start, point_end, point_start, point_end));
+    return arcs_list;
+  }
+  std::cout << "Start convert arc to bezier\n";
 
   double sin_phi = std::sin(angle_degree * PI / 180);
   double cos_phi = std::cos(angle_degree * PI / 180);
@@ -88,6 +90,9 @@ ArrayList<BezierCurve> arcs_to_curves(Point point_start, Point point_end, double
   double segments = (int)std::ceil((double)std::abs(dtheta / (PI / 2.0)));
   double delta = dtheta / segments;
   double t = 8.0 / 3.0 * std::sin(delta / 4.0) * std::sin(delta / 4.0) / std::sin(delta / 2.0);
+  std::cout << "\nsegment = " << segments << '\n';
+  std::cout << "delta = " << delta << '\n';
+  std::cout << "t = " << t << '\n';
 
   double startX = point_start[0];
   double startY = point_start[1];
@@ -674,7 +679,7 @@ Path::Path(Attribute *attrs, int attrs_count, BaseShape *parent)
               sweep_flag = (int)read_double(&value);   
               point_n[0] = current_point[0] + read_double(&value);
               point_n[1] = current_point[1] + read_double(&value);
-              this->bezier_list.push(BezierCurve{current_point, point_n, current_point, point_n});
+              this->bezier_list.append(arcs_to_curves(current_point, point_n, rx, ry, angle_degree, large_arc_flag, sweep_flag));
 
               current_point = this->bezier_list[this->bezier_list.len() - 1].point_N;
               pre_control_point = current_point;
@@ -705,8 +710,6 @@ Path::Path(Attribute *attrs, int attrs_count, BaseShape *parent)
 }
 
 void Path::render(Gdiplus::Graphics *graphics) const {
-  std::cout << this->stroke_width << '\n';
-
   Gdiplus::FillMode fillmode;
   switch (this->fill_rule) {
     case FILL_RULE_NONZERO:
@@ -746,6 +749,7 @@ void Path::render(Gdiplus::Graphics *graphics) const {
     BezierCurve curve = this->bezier_list[i];
 
     if (last_point[0] != curve.point_0[0] || last_point[1] != curve.point_0[1]){
+      std::cout << "\nSame\n";
       path_list.StartFigure();
     }
 
@@ -753,11 +757,6 @@ void Path::render(Gdiplus::Graphics *graphics) const {
                         (Gdiplus::REAL)curve.point_CS[0], (Gdiplus::REAL)curve.point_CS[1],
                         (Gdiplus::REAL)curve.point_CE[0], (Gdiplus::REAL)curve.point_CE[1],
                         (Gdiplus::REAL)curve.point_N[0], (Gdiplus::REAL)curve.point_N[1]);
-
-    std::cout << "Point start: " << curve.point_0[0] << " | " << curve.point_0[1] << '\n';
-    std::cout << "Point_CS: " << curve.point_CS[0] << " | " << curve.point_CS[1] << '\n';
-    std::cout << "Point_CE: " << curve.point_CE[0] << " | " << curve.point_CE[1] << '\n';
-    std::cout << "Point_N: " << curve.point_N[0] << " | " << curve.point_N[1] << '\n';
 
     last_point = curve.point_N;
   }
