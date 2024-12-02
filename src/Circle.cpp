@@ -19,7 +19,15 @@ constexpr std::string_view circle_attr_name[CIRCLE_ATTR_COUNT] {
 
 constexpr InverseIndex<CIRCLE_ATTR_COUNT> inv_circle_attribute= {&circle_attr_name};
 
-void Circle::render(Gdiplus::Graphics *) const {
+void Circle::render(Gdiplus::Graphics *graphics) const {
+  if (this->stroke_brush) {
+    Gdiplus::Pen pen = {this->stroke_brush.get(), (float)this->stroke_width};
+    graphics->DrawEllipse(&pen, (Gdiplus::REAL) (cx - r),(Gdiplus::REAL) (cy - r),(Gdiplus::REAL) (2 * r),(Gdiplus::REAL) (2 * r));
+  } 
+
+  if (this->fill_brush) {
+    graphics->FillEllipse(this->fill_brush.get(),(Gdiplus::REAL) (cx - r),(Gdiplus::REAL) (cy - r),(Gdiplus::REAL) (2 * r),(Gdiplus::REAL) (2 * r));
+  }
 }
 
 Circle::Circle(Attribute *attrs, int attrs_count, BaseShape *parent)

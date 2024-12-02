@@ -749,7 +749,6 @@ void Path::render(Gdiplus::Graphics *graphics) const {
     BezierCurve curve = this->bezier_list[i];
 
     if (last_point[0] != curve.point_0[0] || last_point[1] != curve.point_0[1]){
-      std::cout << "\nSame\n";
       path_list.StartFigure();
     }
 
