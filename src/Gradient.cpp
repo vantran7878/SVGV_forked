@@ -98,7 +98,8 @@ static RadialGradient read_radial_gradient(Attribute *attrs, int attribute_count
   result.cx.percent = true;
   result.cy.val = 50;
   result.cy.percent = true;
-
+  result.r.val = 50;
+  result.r.percent = true;
   
   for (int i = 0; i < attribute_count; ++i) {
     std::string_view key = attrs[i].key;

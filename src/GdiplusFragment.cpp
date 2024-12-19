@@ -1,4 +1,5 @@
 #include "GdiplusFragment.h"
+#include "GdiplusFragment.h"
 #include "Text.h"
 #include "Gradient.h"
 
@@ -71,13 +72,13 @@ static std::unique_ptr<const Gdiplus::Brush> paint_to_brush(Paint paint, double 
       if (it == gradient_map->end()) return nullptr;
 
       Gradient *gradient = &it->second;
+      AABB size = shape->get_bounding();
 
+      double width = (size.max[0] - size.min[0]);
+      double height = (size.max[1] - size.min[1]);
       switch (gradient->type) {
         case GRADIENT_TYPE_LINEAR: {
-          AABB size = shape->get_bounding();
-
-          double width = (size.max[0] - size.min[0]);
-          double height = (size.max[1] - size.min[1]);
+          
 
           Point p0 = {
             apply_percent(gradient->variants.linear.x1.val, gradient->variants.linear.x1.percent, svg->root->width, gradient->gradient_units),
@@ -161,7 +162,7 @@ static std::unique_ptr<const Gdiplus::Brush> paint_to_brush(Paint paint, double 
               (BYTE)(gradient->stops[i].stop_color.g * 255),
               (BYTE)(gradient->stops[i].stop_color.b * 255),
             };
-            blendPositions[i + 1] = (Gdiplus::REAL)((gradient->stops[i].offset * gap + z) / new_gap);
+            blendPositions[i + 1] = (Gdiplus::REAL)((gradient->stops[i].offset * gap + pad) / new_gap);
           }
 
           colors[stop_count + 1] = Gdiplus::Color{
@@ -185,7 +186,119 @@ static std::unique_ptr<const Gdiplus::Brush> paint_to_brush(Paint paint, double 
           return brush;
         } break;
         case GRADIENT_TYPE_RADIAL: {
+          size_t stop_count = gradient->stops.len();
 
+          std::unique_ptr<Gdiplus::Color[]> colors = std::make_unique<Gdiplus::Color[]>(stop_count + 2);
+          std::unique_ptr<Gdiplus::REAL[]> iter_positions = std::make_unique<Gdiplus::REAL[]>(stop_count + 2);
+
+          iter_positions[0] = 0.0f;
+          
+          std::cout << "Stop info:\n";
+          for (size_t i = 0; i < stop_count; ++i) {
+          	std::cout << "Offset: " << gradient->stops[i].offset << '\n';
+          	std::cout << "Color: ";
+          	std::cout << gradient->stops[i].stop_color.r * 255 << ' ';
+          	std::cout << gradient->stops[i].stop_color.g * 255 << ' ';
+          	std::cout << gradient->stops[i].stop_color.b * 255 << ' ';
+          	std::cout << gradient->stops[i].stop_opacity * opacity * 255 << '\n';
+		  }
+          
+          colors[0] = Gdiplus::Color {
+            (BYTE)(gradient->stops[stop_count - 1].stop_opacity * opacity * 255),      
+            (BYTE)(gradient->stops[stop_count - 1].stop_color.r * 255),            
+            (BYTE)(gradient->stops[stop_count - 1].stop_color.g * 255),             
+            (BYTE)(gradient->stops[stop_count - 1].stop_color.b * 255),         
+          };
+
+          for (size_t i = 0; i < stop_count; ++i) {
+            colors[i + 1] = Gdiplus::Color{
+              (BYTE)(gradient->stops[stop_count - i - 1].stop_opacity * opacity * 255),      
+              (BYTE)(gradient->stops[stop_count - i - 1].stop_color.r * 255),            
+              (BYTE)(gradient->stops[stop_count - i - 1].stop_color.g * 255),             
+              (BYTE)(gradient->stops[stop_count - i - 1].stop_color.b * 255),         
+            };
+            iter_positions[i + 1] = (Gdiplus::REAL)((1 - gradient->stops[stop_count - i - 1].offset));
+          }
+
+          colors[stop_count + 1] =  Gdiplus::Color{
+            (BYTE)(gradient->stops[0].stop_opacity * opacity * 255),      
+            (BYTE)(gradient->stops[0].stop_color.r * 255),            
+            (BYTE)(gradient->stops[0].stop_color.g * 255),             
+            (BYTE)(gradient->stops[0].stop_color.b * 255),         
+          };
+
+          iter_positions[stop_count + 1] = 1.0f;
+         
+          stop_count += 2;
+
+          for (size_t i = 0; i < stop_count; ++i) {
+            std::cout << "ITER: " << iter_positions[i] << '\n';
+            std::cout << (int)colors[i].GetR() << ' '; 
+            std::cout << (int)colors[i].GetG() << ' '; 
+            std::cout << (int)colors[i].GetB() << ' '; 
+            std::cout << (int)colors[i].GetA() << '\n'; 
+          }
+
+          RadialGradient radial_grad = gradient->variants.radial;
+          PercentUnit p_fx = radial_grad.fx || radial_grad.cx;
+          PercentUnit p_fy = radial_grad.fy || radial_grad.cy;
+
+          double fx = apply_percent(p_fx.val, p_fx.percent, width, gradient->gradient_units);
+          double fy = apply_percent(p_fy.val, p_fy.percent, width, gradient->gradient_units);
+          double cx = apply_percent(radial_grad.cx.val, radial_grad.cx.percent, width, gradient->gradient_units);
+          double cy = apply_percent(radial_grad.cy.val, radial_grad.cy.percent, width, gradient->gradient_units);
+          double r = apply_percent(radial_grad.r.val, radial_grad.r.percent, width, gradient->gradient_units);
+          //double fr = apply_percent(radial_grad.fr.val, radial_grad.fr.percent, width, gradient->gradient_units);
+
+          std::cout << "C: " << cx << " | " << cy << '\n';
+          std::cout << "F: " << fx << " | " << fy << '\n';
+          std::cout << "R: " << r << '\n';
+
+          
+          Gdiplus::GraphicsPath path;
+          path.AddEllipse((Gdiplus::REAL)(cx - r),
+                          (Gdiplus::REAL)(cy - r),
+                          (Gdiplus::REAL)(2 * r),
+                          (Gdiplus::REAL)(2 * r));
+          
+          std::unique_ptr<Gdiplus::PathGradientBrush> brush = std::make_unique<Gdiplus::PathGradientBrush>(&path);
+
+          
+          brush->SetInterpolationColors(colors.get(), iter_positions.get(), (INT)stop_count);
+          brush->SetWrapMode(Gdiplus::WrapModeClamp);
+          
+          Gdiplus::Matrix matrix_gradient {
+            (Gdiplus::REAL)gradient->transform.m[0][0],
+            (Gdiplus::REAL)gradient->transform.m[1][0],
+            (Gdiplus::REAL)gradient->transform.m[0][1],
+            (Gdiplus::REAL)gradient->transform.m[1][1],
+            (Gdiplus::REAL)gradient->transform.d[0],
+            (Gdiplus::REAL)gradient->transform.d[1]
+          };
+
+          Gdiplus::Matrix matrix_shape{
+            (Gdiplus::REAL)shape->transform.m[0][0],
+            (Gdiplus::REAL)shape->transform.m[1][0],
+            (Gdiplus::REAL)shape->transform.m[0][1],
+            (Gdiplus::REAL)shape->transform.m[1][1],
+            (Gdiplus::REAL)shape->transform.d[0],
+            (Gdiplus::REAL)shape->transform.d[1]
+          };
+
+          switch(gradient->gradient_units) {
+            case GRADIENT_UNIT_USER_SPACE_ON_USE: {
+              brush->MultiplyTransform(&matrix_gradient, Gdiplus::MatrixOrderAppend);
+              brush->MultiplyTransform(&matrix_shape, Gdiplus::MatrixOrderAppend);
+            } break;
+            case GRADIENT_UNIT_OBJECT_BOUNDING_BOX: {
+              std::cout << "ERROR: not implemented\n";
+            } break;
+            case GRADIENT_UNIT_COUNT: {
+              __builtin_unreachable();
+            }
+          }
+
+          return brush;
         } break;
         case GRADIENT_TYPE_COUNT: {
           __builtin_unreachable();
